@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEON NOSTALGIA // RETRO DEMO 1995</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #050508;
+            font-family: 'Courier New', Courier, monospace;
+            color: #00ffcc;
+        }
+
+        #demo-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #000;
+        }
+
+        canvas {
+            display: block;
+            image-rendering: pixelated;
+            box-shadow: 0 0 30px rgba(0, 255, 204, 0.2);
+        }
+
+        .crt-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+            background: linear-gradient(
+                rgba(18, 16, 16, 0) 50%, 
+                rgba(0, 0, 0, 0.35) 50%
+            ), linear-gradient(
+                90deg,
+                rgba(255, 0, 0, 0.03),
+                rgba(0, 255, 0, 0.01),
+                rgba(0, 0, 255, 0.03)
+            );
+            background-size: 100% 4px, 6px 100%;
+            opacity: 1;
+            transition: opacity 0.3s;
+        }
+
+        .crt-overlay.disabled {
+            opacity: 0;
+        }
+
+        .vignette {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 11;
+            box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.85);
+        }
+
+        #start-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(5, 5, 12, 0.92);
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            text-align: center;
+            padding: 20px;
+        }
+
+        #start-overlay h1 {
+            font-size: 2.8rem;
+            color: #ff0077;
+            text-shadow: 3px 3px 0px #00ffff, -3px -3px 0px #ffff00;
+            margin-bottom: 10px;
+            letter-spacing: 4px;
+            animation: pulse 1.5s infinite alternate;
+        }
+
+        #start-overlay p {
+            font-size: 1.2rem;
+            color: #00ffcc;
+            margin-top: 15px;
+            letter-spacing: 2px;
+            line-height: 1.6;
+        }
+
+        .start-btn {
+            margin-top: 35px;
+            padding: 14px 32px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            font-family: inherit;
+            color: #000;
+            background: #00ffcc;
+            border: 3px solid #ff0077;
+            box-shadow: 5px 5px 0px #ff0077;
+            cursor: pointer;
+            transition: transform 0.1s, box-shadow 0.1s;
+            text-transform: uppercase;
+        }
+
+        .start-btn:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 7px 7px 0px #ff0077;
+            background: #00ffff;
+        }
+
+        #hud {
+            position: absolute;
+            top: 15px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 15;
+            pointer-events: none;
+            font-size: 0.9rem;
+            color: #00ffcc;
+            text-shadow: 0 0 5px rgba(0, 255, 204, 0.8);
+        }
+
+        #controls-panel {
+            position: absolute;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 15;
+            background: rgba(0, 0, 0, 0.65);
+            padding: 8px 16px;
+            border: 1px solid #00ffcc;
+            border-radius: 4px;
+            backdrop-filter: blur(4px);
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn {
+            background: rgba(0, 255, 204, 0.1);
+            border: 1px solid #00ffcc;
+            color: #00ffcc;
+            padding: 6px 12px;
+            font-family: inherit;
+            font-size: 0.8rem;
+            cursor: pointer;
+            border-radius: 2px;
+            transition: all 0.2s;
+        }
+
+        .btn:hover, .btn.active {
+            background: #00ffcc;
+            color: #000;
+            box-shadow: 0 0 10px #00ffcc;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.98); opacity: 0.8; }
+            100% { transform: scale(1.02); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="demo-container">
+        <!-- CRT Overlay layers -->
+        <div id="crt" class="crt-overlay"></div>
+        <div class="vignette"></div>
+
+        <!-- Canvas Display -->
+        <canvas id="demoCanvas"></canvas>
+
+        <!-- HUD display -->
+        <div id="hud">
+            <div>NEON NOSTALGIA // DEMO 1995</div>
+            <div id="fps-display">FPS: 60</div>
+        </div>
+
+        <!-- Controls UI -->
+        <div id="controls-panel">
+            <button class="btn active" id="btn-fx-toggle">FX: PLASMA + 3D</button>
+            <button class="btn" id="btn-mesh-toggle">3D MESH: TORUS</button>
+            <button class="btn active" id="btn-crt-toggle">CRT: ON</button>
+            <button class="btn active" id="btn-audio-toggle">AUDIO: ON</button>
+        </div>
+
+        <!-- Splash Screen for Audio Unlocking -->
+        <div id="start-overlay">
+            <h1>NEON NOSTALGIA</h1>
+            <p>FUTURE CREATIONS PRESENT A 1995 STYLE DEMO<br>SYNTHESIS & REAL-TIME GRAPHICS</p>
+            <p style="font-size: 0.9rem; color: #ff0077; margin-top: 20px;">[ NO LIBRARIES • 100% VANILLA JS • GENERATIVE CHIPTUNE ]</p>
+            <button class="start-btn" id="start-btn">▶ RUN DEMO</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('demoCanvas');
+        const ctx = canvas.getContext('2d');
+        const fpsDisplay = document.getElementById('fps-display');
+        
+        // Internal render resolution for authentic pixel art scale (400x225 -> 16:9 widescreen retro)
+        const RENDER_WIDTH = 400;
+        const RENDER_HEIGHT = 225;
+        canvas.width = RENDER_WIDTH;
+        canvas.height = RENDER_HEIGHT;
+
+        // UI scale adjustment
+        function resizeCanvas() {
+            const windowRatio = window.innerWidth / window.innerHeight;
+            const targetRatio = RENDER_WIDTH / RENDER_HEIGHT;
+            
+            if (windowRatio > targetRatio) {
+                canvas.style.height = '100vh';
+                canvas.style.width = (window.innerHeight * targetRatio) + 'px';
+            } else {
+                canvas.style.width = '100vw';
+                canvas.style.height = (window.innerWidth / targetRatio) + 'px';
+            }
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // State Machine
+        let isRunning = false;
+        let activeBgFx = 0; // 0: Plasma, 1: Fire, 2: Tunnel
+        let activeMeshIndex = 0; // 0: Torus, 1: Cube, 2: Octahedron
+        let soundEnabled = true;
+        let crtEnabled = true;
+
+        class RetroSynthEngine {
+            constructor() {
+                this.ctx = null;
+                this.masterGain = null;
+                this.tempo = 125;
+                this.step = 0;
+                this.isPlaying = false;
+                
+                // Note Frequencies
+                this.notes = {
+                    'C2': 65.41, 'D2': 73.42, 'E2': 82.41, 'F2': 87.31, 'G2': 98.00, 'A2': 110.00, 'B2': 123.47,
+                    'C3': 130.81, 'Eb3': 155.56, 'F3': 174.61, 'G3': 196.00, 'Bb3': 233.08,
+                    'C4': 261.63, 'D4': 293.66, 'Eb4': 311.13, 'F4': 349.23, 'G4': 392.00, 'Ab4': 415.30, 'Bb4': 466.16,
+                    'C5': 523.25, 'D5': 587.33, 'Eb5': 622.25, 'F5': 698.46, 'G5': 783.99, 'Bb5': 932.33, 'OFF': 0
+                };
+
+                // Track sequences (16-step retro pattern)
+                this.bassPattern = ['C2', 'OFF', 'C2', 'OFF', 'Eb2', 'OFF', 'F2', 'OFF', 'G2', 'OFF', 'G2', 'OFF', 'Bb2', 'OFF', 'G2', 'OFF'];
+                this.leadPattern = ['C4', 'Eb4', 'G4', 'C5', 'Bb4', 'G4', 'Eb4', 'F4', 'G4', 'C5', 'Eb5', 'D5', 'C5', 'Bb4', 'G4', 'F4'];
+                this.arpPattern  = ['C3', 'G3', 'C4', 'Eb4', 'G4', 'Eb4', 'C4', 'G3', 'F3', 'C4', 'F4', 'Ab4', 'C5', 'Ab4', 'F4', 'C4'];
+            }
+
+            init() {
+                if (this.ctx) return;
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                this.ctx = new AudioCtx();
+                
+                this.masterGain = this.ctx.createGain();
+                this.masterGain.gain.setValueAtTime(0.25, this.ctx.currentTime);
+                this.masterGain.connect(this.ctx.destination);
+            }
+
+            playPulse(freq, duration, type = 'square', detune = 0) {
+                if (!freq || !this.ctx || !soundEnabled) return;
+                
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                osc.detune.setValueAtTime(detune, this.ctx.currentTime);
+
+                // Quick synth ADSR decay envelope
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+
+                osc.connect(gain);
+                gain.connect(this.masterGain);
+
+                osc.start();
+                osc.stop(this.ctx.currentTime + duration);
+            }
+
+            playPercussion(type) {
+                if (!this.ctx || !soundEnabled) return;
+
+                if (type === 'kick') {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.frequency.setValueAtTime(130, this.ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+                    gain.gain.setValueAtTime(0.6, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+                    osc.connect(gain);
+                    gain.connect(this.masterGain);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + 0.15);
+                } else if (type === 'hihat') {
+                    // White noise hi-hat
+                    const bufferSize = this.ctx.sampleRate * 0.04;
+                    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                    const output = buffer.getChannelData(0);
+                    for (let i = 0; i < bufferSize; i++) {
+                        output[i] = Math.random() * 2 - 1;
+                    }
+
+                    const whiteNoise = this.ctx.createBufferSource();
+                    whiteNoise.buffer = buffer;
+
+                    const filter = this.ctx.createBiquadFilter();
+                    filter.type = 'highpass';
+                    filter.frequency.value = 5000;
+
+                    const gain = this.ctx.createGain();
+                    gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.04);
+
+                    whiteNoise.connect(filter);
+                    filter.connect(gain);
+                    gain.connect(this.masterGain);
+
+                    whiteNoise.start();
+                }
+            }
+
+            tick() {
+                if (!this.isPlaying) return;
+
+                const stepIdx = this.step % 16;
+
+                // Bass
+                const bassNote = this.notes[this.bassPattern[stepIdx]];
+                if (bassNote) this.playPulse(bassNote, 0.18, 'sawtooth', -5);
+
+                // Arpeggio (Fast 16ths)
+                const arpNote = this.notes[this.arpPattern[stepIdx]];
+                if (arpNote) this.playPulse(arpNote, 0.08, 'triangle', 5);
+
+                // Lead Synth
+                const leadNote = this.notes[this.leadPattern[stepIdx]];
+                if (leadNote) this.playPulse(leadNote, 0.22, 'square', 0);
+
+                // Rhythm
+                if (stepIdx % 4 === 0) this.playPercussion('kick');
+                if (stepIdx % 2 === 1) this.playPercussion('hihat');
+
+                this.step++;
+            }
+
+            start() {
+                this.init();
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+                this.isPlaying = true;
+                const interval = (60 / this.tempo) * 1000 / 4; // 16th notes
+                setInterval(() => this.tick(), interval);
+            }
+        }
+
+        const audioSynth = new RetroSynthEngine();
+
+        class StarfieldFX {
+            constructor(numStars) {
+                this.numStars = numStars;
+                this.stars = [];
+                for (let i = 0; i < numStars; i++) {
+                    this.stars.push({
+                        x: (Math.random() - 0.5) * RENDER_WIDTH * 2,
+                        y: (Math.random() - 0.5) * RENDER_HEIGHT * 2,
+                        z: Math.random() * RENDER_WIDTH,
+                        vz: 2 + Math.random() * 3
+                    });
+                }
+            }
+
+            updateAndRender(ctx, time) {
+                const cx = RENDER_WIDTH / 2;
+                const cy = RENDER_HEIGHT / 2;
+                const speedMult = 1 + Math.sin(time * 0.002) * 0.5;
+
+                ctx.fillStyle = 'white';
+                for (let star of this.stars) {
+                    star.z -= star.vz * speedMult;
+                    if (star.z <= 0) {
+                        star.z = RENDER_WIDTH;
+                        star.x = (Math.random() - 0.5) * RENDER_WIDTH * 2;
+                        star.y = (Math.random() - 0.5) * RENDER_HEIGHT * 2;
+                    }
+
+                    const k = 128 / star.z;
+                    const px = star.x * k + cx;
+                    const py = star.y * k + cy;
+
+                    if (px >= 0 && px < RENDER_WIDTH && py >= 0 && py < RENDER_HEIGHT) {
+                        const size = Math.max(1, (1 - star.z / RENDER_WIDTH) * 2.5);
+                        const alpha = 1 - (star.z / RENDER_WIDTH);
+                        ctx.fillStyle = `rgba(0, 255, 255, ${alpha})`;
+                        ctx.fillRect(px, py, size, size);
+                    }
+                }
+            }
+        }
+
+        class PlasmaFX {
+            constructor() {
+                this.imgData = ctx.createImageData(RENDER_WIDTH, RENDER_HEIGHT);
+            }
+
+            render(ctx, time) {
+                const t = time * 0.003;
+                const data = this.imgData.data;
+                let ptr = 0;
+
+                for (let y = 0; y < RENDER_HEIGHT; y++) {
+                    for (let x = 0; x < RENDER_WIDTH; x++) {
+                        // Classic demoscene plasma sine combination
+                        const v1 = Math.sin(x * 0.03 + t);
+                        const v2 = Math.sin(y * 0.04 + t);
+                        const v3 = Math.sin((x + y) * 0.03 + t);
+                        const v4 = Math.sin(Math.sqrt(x * x + y * y) * 0.02 + t);
+
+                        const v = (v1 + v2 + v3 + v4);
+
+                        // Retro glowing color palette (Cyan/Magenta/Purple/Black)
+                        const r = Math.floor(Math.sin(v * Math.PI) * 127 + 128);
+                        const g = Math.floor(Math.cos(v * Math.PI) * 64 + 64);
+                        const b = Math.floor(Math.sin(v * Math.PI + (2 * Math.PI / 3)) * 127 + 128);
+
+                        data[ptr]     = r;
+                        data[ptr + 1] = g;
+                        data[ptr + 2] = b;
+                        data[ptr + 3] = 160; // Semi-transparent overlay
+
+                        ptr += 4;
+                    }
+                }
+                ctx.putImageData(this.imgData, 0, 0);
+            }
+        }
+
+        class Wireframe3DEngine {
+            constructor() {
+                this.angleX = 0;
+                this.angleY = 0;
+                this.angleZ = 0;
+            }
+
+            generateCube() {
+                const nodes = [
+                    [-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1],
+                    [-1, -1, 1],  [1, -1, 1],  [1, 1, 1],  [-1, 1, 1]
+                ];
+                const edges = [
+                    [0,1], [1,2], [2,3], [3,0],
+                    [4,5], [5,6], [6,7], [7,4],
+                    [0,4], [1,5], [2,6], [3,7]
+                ];
+                return { nodes, edges, scale: 35 };
+            }
+
+            generateOctahedron() {
+                const nodes = [
+                    [1, 0, 0], [-1, 0, 0], [0, 1, 0],
+                    [0, -1, 0], [0, 0, 1], [0, 0, -1]
+                ];
+                const edges = [
+                    [0,2], [2,1], [1,3], [3,0],
+                    [0,4], [1,4], [2,4], [3,4],
+                    [0,5], [1,5], [2,5], [3,5]
+                ];
+                return { nodes, edges, scale: 45 };
+            }
+
+            generateTorus(R = 1.2, r = 0.5, segsR = 12, segsr = 8) {
+                const nodes = [];
+                const edges = [];
+
+                for (let i = 0; i < segsR; i++) {
+                    const u = (i / segsR) * Math.PI * 2;
+                    for (let j = 0; j < segsr; j++) {
+                        const v = (j / segsr) * Math.PI * 2;
+                        const x = (R + r * Math.cos(v)) * Math.cos(u);
+                        const y = (R + r * Math.cos(v)) * Math.sin(u);
+                        const z = r * Math.sin(v);
+                        nodes.push([x, y, z]);
+
+                        const curr = i * segsr + j;
+                        const nextR = ((i + 1) % segsR) * segsr + j;
+                        const nextr = i * segsr + ((j + 1) % segsr);
+
+                        edges.push([curr, nextR]);
+                        edges.push([curr, nextr]);
+                    }
+                }
+                return { nodes, edges, scale: 28 };
+            }
+
+            render(ctx, meshType, time) {
+                let mesh;
+                if (meshType === 0) mesh = this.generateTorus();
+                else if (meshType === 1) mesh = this.generateCube();
+                else mesh = this.generateOctahedron();
+
+                this.angleX += 0.015;
+                this.angleY += 0.02;
+                this.angleZ += 0.01;
+
+                const cx = RENDER_WIDTH / 2;
+                const cy = RENDER_HEIGHT / 2 + Math.sin(time * 0.003) * 15; // Floating movement
+
+                // Rotation matrices calculation
+                const radX = this.angleX, radY = this.angleY, radZ = this.angleZ;
+                const projectedNodes = [];
+
+                for (let node of mesh.nodes) {
+                    // Rotate X
+                    let y1 = node[1] * Math.cos(radX) - node[2] * Math.sin(radX);
+                    let z1 = node[1] * Math.sin(radX) + node[2] * Math.cos(radX);
+                    let x1 = node[0];
+
+                    // Rotate Y
+                    let x2 = x1 * Math.cos(radY) + z1 * Math.sin(radY);
+                    let z2 = -x1 * Math.sin(radY) + z1 * Math.cos(radY);
+                    let y2 = y1;
+
+                    // Rotate Z
+                    let x3 = x2 * Math.cos(radZ) - y2 * Math.sin(radZ);
+                    let y3 = x2 * Math.sin(radZ) + y2 * Math.cos(radZ);
+                    let z3 = z2;
+
+                    // Perspective projection
+                    const fov = 180;
+                    const distance = 3.5;
+                    const sz = z3 + distance;
+                    const projX = (x3 * fov) / sz + cx;
+                    const projY = (y3 * fov) / sz + cy;
+
+                    projectedNodes.push([projX, projY, sz]);
+                }
+
+                // Draw neon vector wireframe lines
+                ctx.lineWidth = 1.5;
+                ctx.strokeStyle = '#00ffff';
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = '#ff00ff';
+
+                for (let edge of mesh.edges) {
+                    const p1 = projectedNodes[edge[0]];
+                    const p2 = projectedNodes[edge[1]];
+
+                    ctx.beginPath();
+                    ctx.moveTo(p1[0], p1[1]);
+                    ctx.lineTo(p2[0], p2[1]);
+                    ctx.stroke();
+                }
+
+                ctx.shadowBlur = 0; // Reset canvas shadow for performance
+            }
+        }
+
+        class SineScrollerFX {
+            constructor() {
+                this.scrollText = "   *** NEON NOSTALGIA *** REALTIME GRAPHICS AND SYNTHESIZED SOUND IN PURE JAVASCRIPT!   GREETINGS TO: THE DEMOSCENE, FARBRAUSCH, FUTURE CREW, RAZOR 1911, ASSEMBLY, REVISION & YOU!   NO EXTERNAL LIBRARIES WERE HARMED IN THE MAKING OF THIS DEMO!   PRESS THE BUTTONS BELOW TO SWITCH FX MODES AND 3D OBJECTS!   KEEP THE RETRO SPIRIT ALIVE!   ";
+                this.xPos = RENDER_WIDTH;
+                this.fontHeight = 16;
+            }
+
+            renderCopperBars(ctx, time) {
+                const barHeight = 30;
+                const startY = RENDER_HEIGHT - 45;
+
+                for (let i = 0; i < barHeight; i++) {
+                    const alpha = Math.sin((i / barHeight) * Math.PI);
+                    const colorOffset = Math.sin(time * 0.005 + i * 0.1);
+                    const r = Math.floor(128 + 127 * Math.sin(colorOffset));
+                    const g = Math.floor(128 + 127 * Math.sin(colorOffset + 2));
+                    const b = 255;
+
+                    ctx.fillStyle = `rgba(${r},${g},${b},${alpha * 0.6})`;
+                    ctx.fillRect(0, startY + i, RENDER_WIDTH, 1);
+                }
+            }
+
+            render(ctx, time) {
+                this.renderCopperBars(ctx, time);
+
+                ctx.font = 'bold 14px "Courier New", monospace';
+                ctx.fillStyle = '#ffff00';
+                ctx.shadowColor = '#ff0000';
+                ctx.shadowBlur = 4;
+
+                this.xPos -= 1.8;
+                if (this.xPos < -this.scrollText.length * 9) {
+                    this.xPos = RENDER_WIDTH;
+                }
+
+                const baseY = RENDER_HEIGHT - 25;
+
+                for (let i = 0; i < this.scrollText.length; i++) {
+                    const charX = this.xPos + i * 9;
+                    if (charX > -10 && charX < RENDER_WIDTH + 10) {
+                        // Bouncing Sine Wave calculation for each letter
+                        const charY = baseY + Math.sin(time * 0.006 + charX * 0.03) * 10;
+                        ctx.fillText(this.scrollText[i], charX, charY);
+                    }
+                }
+
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        const starfield = new StarfieldFX(180);
+        const plasma = new PlasmaFX();
+        const wireframe3d = new Wireframe3DEngine();
+        const scroller = new SineScrollerFX();
+
+        let lastTime = performance.now();
+        let frameCount = 0;
+        let fps = 60;
+
+        function renderLoop(currentTime) {
+            if (!isRunning) return;
+
+            // Calculate FPS
+            frameCount++;
+            if (currentTime - lastTime >= 1000) {
+                fps = frameCount;
+                frameCount = 0;
+                lastTime = currentTime;
+                fpsDisplay.textContent = `FPS: ${fps}`;
+            }
+
+            // Clear Screen
+            ctx.fillStyle = '#05050a';
+            ctx.fillRect(0, 0, RENDER_WIDTH, RENDER_HEIGHT);
+
+            // Render Background Effect
+            if (activeBgFx === 0) {
+                plasma.render(ctx, currentTime);
+            }
+            
+            // Render Starfield
+            starfield.updateAndRender(ctx, currentTime);
+
+            // Render 3D Vector Mesh
+            wireframe3d.render(ctx, activeMeshIndex, currentTime);
+
+            // Render Bouncing Sine Scroller
+            scroller.render(ctx, currentTime);
+
+            requestAnimationFrame(renderLoop);
+        }
+
+        document.getElementById('start-overlay').addEventListener('click', () => {
+            document.getElementById('start-overlay').style.display = 'none';
+            isRunning = true;
+            audioSynth.start();
+            requestAnimationFrame(renderLoop);
+        });
+
+        // Background FX Toggle
+        const btnFx = document.getElementById('btn-fx-toggle');
+        btnFx.addEventListener('click', () => {
+            activeBgFx = (activeBgFx + 1) % 2;
+            btnFx.textContent = activeBgFx === 0 ? 'FX: PLASMA + STARFIELD' : 'FX: STARFIELD ONLY';
+        });
+
+        // 3D Mesh Toggle
+        const btnMesh = document.getElementById('btn-mesh-toggle');
+        const meshNames = ['TORUS', 'CUBE', 'OCTAHEDRON'];
+        btnMesh.addEventListener('click', () => {
+            activeMeshIndex = (activeMeshIndex + 1) % 3;
+            btnMesh.textContent = `3D MESH: ${meshNames[activeMeshIndex]}`;
+        });
+
+        // CRT Scanline Toggle
+        const btnCrt = document.getElementById('btn-crt-toggle');
+        const crtElem = document.getElementById('crt');
+        btnCrt.addEventListener('click', () => {
+            crtEnabled = !crtEnabled;
+            crtElem.classList.toggle('disabled', !crtEnabled);
+            btnCrt.classList.toggle('active', crtEnabled);
+            btnCrt.textContent = `CRT: ${crtEnabled ? 'ON' : 'OFF'}`;
+        });
+
+        // Audio Toggle
+        const btnAudio = document.getElementById('btn-audio-toggle');
+        btnAudio.addEventListener('click', () => {
+            soundEnabled = !soundEnabled;
+            btnAudio.classList.toggle('active', soundEnabled);
+            btnAudio.textContent = `AUDIO: ${soundEnabled ? 'ON' : 'OFF'}`;
+        });
+    </script>
+</body>
+</html>
