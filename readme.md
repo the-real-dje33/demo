@@ -27,7 +27,7 @@ Everything you see and hear is generated on the fly:
 
 Check out the live interactive demo directly on **GitHub Pages**:
 
-👉 **[View the Live Demo Here](https://your-username.github.io/neon-nostalgia/)**
+👉 **[View the Live Demo Here]([https://your-username.github.io/neon-nostalgia/](https://the-real-dje33.github.io/demo/))**
 
 ## 🛠️ Built With
 
